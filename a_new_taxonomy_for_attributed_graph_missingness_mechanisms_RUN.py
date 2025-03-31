@@ -101,19 +101,17 @@ def run_experiment(selected_datasets=("Cora", "Texas", "Tolokers"),
     traditional_mechanisms = [
         ("MCAR", {}),
         ("MAR", {"proportion_observed": 0.25}),
-        # ("MNAR_quantile_lower", {"option": "quantile", "cut": "lower", "q": 0.25, "p_params": 0.5, "mcar_extra": True}),
-        # ("MNAR_quantile_upper", {"option": "quantile", "cut": "upper", "q": 0.25, "p_params": 0.5, "mcar_extra": True}),
+        ("MNAR_quantile_lower", {"option": "quantile", "cut": "lower", "q": 0.25, "p_params": 0.5, "mcar_extra": True}),
+        ("MNAR_quantile_upper", {"option": "quantile", "cut": "upper", "q": 0.25, "p_params": 0.5, "mcar_extra": True}),
         ("MNAR_quantile_both", {"option": "quantile", "cut": "both", "q": 0.25, "p_params": 0.5, "mcar_extra": True}),
-        # ("MNAR_selfmasked", {"option": "selfmasked"})
+        ("MNAR_selfmasked", {"option": "selfmasked"})
     ]
     graph_mechanisms = [
-        ("MAR_scenario3.0.25", {"scenario": 3, "aggregator_prob_funct": aggregator_mar_scenario30, "prop_obs": 0.25}),
-        ("MAR_scenario3.1.0.25", {"scenario": 3, "aggregator_prob_funct": aggregator_mar_scenario310, "prop_obs": 0.25}),
-        ("MAR_scenario3.0.75", {"scenario": 3, "aggregator_prob_funct": aggregator_mar_scenario30, "prop_obs": 0.75}),
-        ("MAR_scenario3.1.0.75", {"scenario": 3, "aggregator_prob_funct": aggregator_mar_scenario310, "prop_obs": 0.75}),
-        # ("MNAR_scenario3", {"scenario": 3, "aggregator_prob_funct": aggregator_mnar_scenario3}),
-        # # ("MNAR_scenario3.1", {"scenario": 3, "aggregator_prob_funct": aggregator_mnar_scenario31}),
-        # ("MNAR_scenario4", {"scenario": 4, "aggregator_prob_funct": aggregator_mnar_scenario4})
+        ("MAR_scenario3", {"scenario": 3, "aggregator_prob_funct": aggregator_mar_scenario30, "prop_obs": 0.25}),
+        ("MAR_scenario3", {"scenario": 3, "aggregator_prob_funct": aggregator_mar_scenario310, "prop_obs": 0.25}),
+        ("MNAR_scenario3", {"scenario": 3, "aggregator_prob_funct": aggregator_mnar_scenario3}),
+        ("MNAR_scenario3.1", {"scenario": 3, "aggregator_prob_funct": aggregator_mnar_scenario31}),
+        ("MNAR_scenario4", {"scenario": 4, "aggregator_prob_funct": aggregator_mnar_scenario4})
     ]
     # Instantiate mask generators.
     mmg = MissingMaskGenerator(seed=42+exp_indx)
@@ -511,50 +509,3 @@ if __name__ == "__main__":
 
 
 
-
-
-
-
-
-
-# # Read the first command-line argument as the selected dataset.
-# # If no argument is given, use "Cora" as default.
-# if len(sys.argv) > 1:
-#     if sys.argv[1] in ["Cora", "CiteSeer", "PubMed", "Texas", "Wisconsin", "Cornell", "Minesweeper", "Tolokers", "Questions"]:
-#         selected_dataset = sys.argv[1]
-#     else:
-#         # print warning
-#         print(f"Invalid dataset name passed as argv[1]. dataset must be in [Cora, CiteSeer, PubMed, Texas, Wisconsin, Cornell, Minesweeper, Tolokers, Questions],  but got '{sys.argv[1]}'. Using default dataset 'Texas'.")
-#         selected_dataset = "Texas"
-# else:
-#     selected_dataset = "Texas"
-#
-# # Read the second command-line argument for the imputer model (if available).
-# if len(sys.argv) > 2:
-#     if sys.argv[2] in ["Tabular_Avg", "Random", "Graph_1hop", "MICE", "FP", "OT-tab", "PCFI", "GRIOT",]:
-#         imputer_names = sys.argv[2]
-#     else:
-#         # print warning
-#         print(f"Invalid imputer name passed as argv[2]. imputer must be in [Tabular_Avg, Random, Graph_1hop, MICE, FP, OT-tab, PCFI, GRIOT],  but got '{sys.argv[2]}'. Using all imputers as default.")
-#         imputer_names = None
-# else:
-#     imputer_names = None  # Use all imputation methods if not specified.
-#
-# # We expect a single dataset name, so we wrap it in a list.
-# selected_datasets = [selected_dataset]
-#
-# all_results = []
-# # Run the experiment 5 times.
-# for exp in range(1, 2):  # 6):
-#     t_start = time.time()
-#     df_exp = run_experiment(selected_datasets=selected_datasets, missing_rates=(0.2,),# 0.5, 0.8),
-#                             output_path="./a_new_taxonomy_for_attributed_graph_missingness_mechanisms",
-#                             exp_indx=exp, imputer_names=imputer_names)
-#     all_results.append(df_exp)
-#     elapsed = time.time() - t_start
-#     print(f"Run {exp} time: {int(elapsed // 60)}min {int(elapsed % 60)}s")
-#
-# # Optionally, concatenate all results into one dataframe
-# final_df = pd.concat(all_results, ignore_index=True)
-# print("Final aggregated experimental results:")
-# print(final_df)
