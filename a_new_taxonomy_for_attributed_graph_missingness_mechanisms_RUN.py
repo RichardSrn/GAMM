@@ -5,6 +5,7 @@ import time
 from tqdm.auto import tqdm
 import argparse
 from datetime import datetime
+import json
 
 # data manipulation
 import numpy as np
@@ -79,7 +80,8 @@ def run_experiment(selected_datasets=("Cora", "Texas", "Tolokers"),
                    missing_rates=(0.2, 0.5, 0.8),
                    output_path="./",
                    exp_indx=1,
-                   imputer_names=None):
+                   imputer_names=None,
+                   save_output=False,):
     """
     Run the full experiment for the given datasets.
     For each dataset, we:
@@ -99,20 +101,23 @@ def run_experiment(selected_datasets=("Cora", "Texas", "Tolokers"),
     """
     # Define the missing mask mechanisms.
     traditional_mechanisms = [
-        ("MCAR", {}),
+        #("MCAR", {}),
         ("MAR", {"proportion_observed": 0.25}),
-        ("MNAR_quantile_lower", {"option": "quantile", "cut": "lower", "q": 0.25, "p_params": 0.5, "mcar_extra": True}),
-        ("MNAR_quantile_upper", {"option": "quantile", "cut": "upper", "q": 0.25, "p_params": 0.5, "mcar_extra": True}),
+        # ("MNAR_quantile_lower", {"option": "quantile", "cut": "lower", "q": 0.25, "p_params": 0.5, "mcar_extra": True}),
+        # ("MNAR_quantile_upper", {"option": "quantile", "cut": "upper", "q": 0.25, "p_params": 0.5, "mcar_extra": True}),
         ("MNAR_quantile_both", {"option": "quantile", "cut": "both", "q": 0.25, "p_params": 0.5, "mcar_extra": True}),
-        ("MNAR_selfmasked", {"option": "selfmasked"})
+        # ("MNAR_selfmasked", {"option": "selfmasked"})
     ]
     graph_mechanisms = [
-        ("MAR_scenario3", {"scenario": 3, "aggregator_prob_funct": aggregator_mar_scenario30, "prop_obs": 0.25}),
-        ("MAR_scenario3", {"scenario": 3, "aggregator_prob_funct": aggregator_mar_scenario310, "prop_obs": 0.25}),
-        ("MNAR_scenario3", {"scenario": 3, "aggregator_prob_funct": aggregator_mnar_scenario3}),
-        ("MNAR_scenario3.1", {"scenario": 3, "aggregator_prob_funct": aggregator_mnar_scenario31}),
+        #("MAR_scenario3.0.25", {"scenario": 3, "aggregator_prob_funct": aggregator_mar_scenario30, "prop_obs": 0.25}),
+        ("MAR_scenario3.1.0.25", {"scenario": 3, "aggregator_prob_funct": aggregator_mar_scenario310, "prop_obs": 0.25}),
+        # ("MAR_scenario3.0.75", {"scenario": 3, "aggregator_prob_funct": aggregator_mar_scenario30, "prop_obs": 0.75}),
+        # ("MAR_scenario3.1.0.75", {"scenario": 3, "aggregator_prob_funct": aggregator_mar_scenario310, "prop_obs": 0.75}),
+        #("MNAR_scenario3", {"scenario": 3, "aggregator_prob_funct": aggregator_mnar_scenario3}),
+        #("MNAR_scenario3.1", {"scenario": 3, "aggregator_prob_funct": aggregator_mnar_scenario31}),
         ("MNAR_scenario4", {"scenario": 4, "aggregator_prob_funct": aggregator_mnar_scenario4})
     ]
+
     # Instantiate mask generators.
     mmg = MissingMaskGenerator(seed=42+exp_indx)
     gmmg = GraphMissingMaskGenerator(seed=42+exp_indx)
@@ -146,7 +151,7 @@ def run_experiment(selected_datasets=("Cora", "Texas", "Tolokers"),
     torch.manual_seed(42)
     np.random.seed(42)
     loader = DatasetsLoader()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = "cpu"#torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     for graph_name in tqdm(selected_datasets, desc="Dataset Loop", leave=True, colour="red", position=0):
         dataset = loader.load_dataset(graph_name)
@@ -173,6 +178,7 @@ def run_experiment(selected_datasets=("Cora", "Texas", "Tolokers"),
                         continue
                     t_impute = time.time()
                     imputed_features = impute_func(data, mask, train_idx=train_idx, val_idx=val_idx, seed=42+exp_indx)
+
                     imp_time = time.time() - t_impute
 
                     # Compute imputation metrics only on test nodes.
@@ -186,6 +192,57 @@ def run_experiment(selected_datasets=("Cora", "Texas", "Tolokers"),
                     except Exception as e:
                         acc, f1_macro, f1_micro, precision_macro, recall_macro, roc_auc, class_report = np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
                         print(f"Error in classification evaluation for {graph_name} with {impute_name}: {e}")
+
+                    # if save_output, we must save the output (imputed_features) and the corresponding mask (mask)
+                    # both in the same, name specific, folder. Folder name should include all outputs with the same
+                    # parameters (for example, it should include exp_index=1, 2, 3, 4, etc. if all other parameters
+                    # are the same ! However, to ensure uniqueness, files name must include time stamp.
+                    # To ensure all information are saved (to know what the features and mask correspond to), we
+                    # also save a json file containing all available info in the same folder.
+                    # All 3 files (features tensor, mask tensor, json file) should share the same name, except that
+                    # the features files starts with FEATURES, the mask files starts with MASK, and the json ends
+                    # with .json; but otherwise, they have a name containing necessary info, and they share the same
+                    # time stamp. Everything is saved in a folder ./{output_path}/tensors/<UNIQUE FILE NAMES>.
+                    # Finally, the code must continue even if there in an error in the saving process.
+                    try:
+                        if save_output:
+                            # 1. Create a unique timestamp and define the base name for the files.
+                            timestamp = str(time.time()).replace('.', '_')
+                            base_filename = f"{graph_name}_{mech_name}_{impute_name}_mr{str(int(mr*100))}_exp{exp_indx}_{timestamp}"
+                            # 2. Define the directory structure.
+                            # The folder path groups results by dataset, mechanism, and imputer.
+                            save_dir = os.path.join(output_path, "tensors", f"{graph_name}_{mech_name}_{impute_name}_mr{str(int(mr*100))}")
+                            os.makedirs(save_dir, exist_ok=True)
+                            # 3. Define the full paths for the output files.
+                            features_filepath = os.path.join(save_dir, f"FEATURES_{base_filename}.pt")
+                            mask_filepath = os.path.join(save_dir, f"MASK_{base_filename}.pt")
+                            metadata_filepath = os.path.join(save_dir, f"METADATA_{base_filename}.json")
+                            # 4. Save the tensors.
+                            torch.save(imputed_features, features_filepath)
+                            torch.save(mask, mask_filepath)
+                            # 5. Prepare and save the metadata as a JSON file.
+                            metadata = {
+                                "exp_indx": exp_indx,
+                                "timestamp": timestamp,
+                                "dataset": graph_name,
+                                "mechanism_name": mech_name,
+                                "mechanism_params": {k: str(v) for k, v in params.items()}, # Convert params to string for JSON compatibility
+                                "missing_rate_target": mr,
+                                "missing_rate_actual": missing_prop,
+                                "imputer": impute_name,
+                                "device": str(device),
+                                "files": {
+                                    "features": features_filepath,
+                                    "mask": mask_filepath,
+                                    "metadata": metadata_filepath
+                                }
+                            }
+                            with open(metadata_filepath, 'w') as f:
+                                json.dump(metadata, f, indent=4)
+                    except Exception as e:
+                        # If any error occurs during the saving process, print a warning and continue.
+                        print(f"\n[WARNING] Failed to save output for {graph_name}/{mech_name}/{impute_name} at mr={mr}. Error: {e}")
+                        pass
 
 
                     results.append({
@@ -241,7 +298,7 @@ def parse_arguments():
         "-d", "--datasets", type=str, default="Texas",
         help="Dataset(s) to use, comma-separated with no spaces. "
              "Available options: Cora, CiteSeer, PubMed, Texas, Wisconsin, Cornell, "
-             "Minesweeper, Tolokers, Questions"
+             "Minesweeper, Tolokers, Questions, Roman-empire, Questions, Squirrel, Chameleon, Actor"
     )
 
     # Imputation model argument
@@ -288,6 +345,12 @@ def parse_arguments():
     parser.add_argument(
         "--verbose", action="store_true", default=True,
         help="Print verbose debugging information"
+    )
+
+    # Save imputed feature matrix and mask
+    parser.add_argument(
+        "--save-output", action="store_true", default=False,
+        help="Save imputed feature matrix and mask"
     )
 
     return parser.parse_args()
@@ -374,6 +437,7 @@ def run_experiments_with_config(config):
     print(config)
     start = config["start"]
     verbose = config["verbose"]
+    save_output = config["save_output"]
 
     # Print experiment setup
     print("\nStarting experiments with:")
@@ -384,6 +448,7 @@ def run_experiments_with_config(config):
     print(f"  Experiment runs: {runs}")
     print(f"  Start of exp index: {start}")
     print(f"  Keep main component: {config['keep_main_component']}")
+    print(f"  Save output: {config['save_output']}")
 
     # Run experiments
     all_results = []
@@ -396,7 +461,8 @@ def run_experiments_with_config(config):
             missing_rates=missing_rates,
             output_path=output_path,
             exp_indx=exp,
-            imputer_names=imputer_names
+            imputer_names=imputer_names,
+            save_output=save_output,
         )
 
         all_results.append(df_exp)
@@ -447,7 +513,8 @@ def process_args_to_config(args):
     # Process datasets
     selected_datasets = [d.strip() for d in args.datasets.split(",")]
     valid_datasets = ["Cora", "CiteSeer", "PubMed", "Texas", "Wisconsin",
-                      "Cornell", "Minesweeper", "Tolokers", "Questions"]
+                      "Cornell", "Minesweeper", "Tolokers", "Questions",
+                      "Roman-empire", "Questions", "Squirrel", "Chameleon", "Actor"]
 
     for dataset in selected_datasets.copy():
         if dataset not in valid_datasets:
@@ -482,7 +549,8 @@ def process_args_to_config(args):
         "runs": args.runs,
         "start": args.start,
         "keep_main_component": args.keep_main_component,
-        "verbose": args.verbose
+        "verbose": args.verbose,
+        "save_output": args.save_output
     }
 
     return config
@@ -506,6 +574,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-

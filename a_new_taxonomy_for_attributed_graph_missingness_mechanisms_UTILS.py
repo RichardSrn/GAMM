@@ -6,7 +6,7 @@ from torch import Tensor
 from torch_geometric.utils import k_hop_subgraph
 import sys
 import os
-from torch_geometric.datasets import Planetoid, WebKB, HeterophilousGraphDataset
+from torch_geometric.datasets import Planetoid, WebKB, HeterophilousGraphDataset, WikipediaNetwork, Actor
 import torch
 import matplotlib.pyplot as plt
 from torch import nn
@@ -260,6 +260,48 @@ class DatasetsLoader:
             datasets[name] = HeterophilousGraphDataset(root=dataset_root, name=name)
         return datasets
 
+    def _load_wikipedia_network(self, graphs='all'):
+        """
+        Load the WikipediaNetwork datasets.
+        :param graphs: 'all', 'squirrel', 'chameleon', or a list containing any of these (case-insensitive).
+        :return: A dictionary of dataset objects.
+        """
+        available_names = ['Squirrel', 'Chameleon']
+        datasets = {}
+        def normalize_name(name):
+            return next((n for n in available_names if n.lower() == name.lower()), None)
+        if isinstance(graphs, str):
+            if graphs.lower() == 'all':
+                selected_names = available_names
+            else:
+                proper_name = normalize_name(graphs)
+                if proper_name is None:
+                    raise ValueError(f"Dataset '{graphs}' not found. Available datasets are: {available_names}")
+                selected_names = [proper_name]
+        elif isinstance(graphs, list):
+            selected_names = []
+            for name in graphs:
+                proper_name = normalize_name(name)
+                if proper_name is None:
+                    raise ValueError(f"Dataset '{name}' not found. Available datasets are: {available_names}")
+                selected_names.append(proper_name)
+        else:
+            raise TypeError("Parameter 'graphs' must be a string or a list of strings.")
+        for name in selected_names:
+            dataset_root = os.path.join(self.root, name)
+            os.makedirs(dataset_root, exist_ok=True)
+            datasets[name] = WikipediaNetwork(root=dataset_root, name=name)
+        return datasets
+
+    def _load_actor(self):
+        """
+        Load the Actor dataset.
+        :return: A dictionary containing the Actor dataset.
+        """
+        dataset_root = os.path.join(self.root, 'Actor')
+        os.makedirs(dataset_root, exist_ok=True)
+        return {'Actor': Actor(root=dataset_root)}
+
     @staticmethod
     def normalize_features(dataset):
         """
@@ -361,6 +403,61 @@ class DatasetsLoader:
                 print(f"Dataset {key}: kept main component with {len(main_nodes)} nodes.")
         return datasets
 
+    # def load_dataset(self, graph_name):
+    #     """
+    #     Generalized method to load datasets based on the provided graph_name parameter.
+    #     :param graph_name: A string or a list of strings specifying which dataset(s) to load.
+    #     :return: A dictionary of dataset objects.
+    #     """
+    #     planetoid_names = {"cora", "citeseer", "pubmed"}
+    #     webkb_names = {"cornell", "texas", "wisconsin"}
+    #     hetero_names = {"roman-empire", "amazon-ratings", "minesweeper", "tolokers", "questions"}
+    #
+    #     datasets = {}
+    #
+    #     def process_single(name):
+    #         name_lower = name.lower()
+    #         if name_lower == "all":
+    #             datasets.update(self._load_planetoid("all"))
+    #             datasets.update(self._load_webkb("all"))
+    #             datasets.update(self._load_heterophilous("all"))
+    #         elif name_lower == "planetoid":
+    #             datasets.update(self._load_planetoid("all"))
+    #         elif name_lower == "webkb":
+    #             datasets.update(self._load_webkb("all"))
+    #         elif name_lower == "heterophilous":
+    #             datasets.update(self._load_heterophilous("all"))
+    #         elif name_lower in planetoid_names:
+    #             datasets.update(self._load_planetoid(name))
+    #         elif name_lower in webkb_names:
+    #             datasets.update(self._load_webkb(name))
+    #         elif name_lower in hetero_names:
+    #             datasets.update(self._load_heterophilous(name))
+    #         else:
+    #             raise ValueError(f"Dataset '{name}' not recognized. "
+    #                              "Please use 'all', 'planetoid', 'webkb', 'heterophilous', "
+    #                              "or one of the available dataset names.")
+    #
+    #     if isinstance(graph_name, list):
+    #         for name in graph_name:
+    #             process_single(name)
+    #     elif isinstance(graph_name, str):
+    #         process_single(graph_name)
+    #     else:
+    #         raise TypeError("The parameter 'graph_name' must be a string or a list of strings.")
+    #
+    #     if self.normalize:
+    #         for key, dataset in datasets.items():
+    #             dataset._data.x = self.normalize_features(dataset)
+    #
+    #     if self.drop_small_classes:
+    #         datasets = self.drop_irrelevant(datasets)
+    #
+    #     # If keeping only the main component is enabled, apply the method here.
+    #     if self.keep_main_component_flag:
+    #         datasets = self.keep_main_component(datasets)
+    #
+    #     return datasets
     def load_dataset(self, graph_name):
         """
         Generalized method to load datasets based on the provided graph_name parameter.
@@ -370,15 +467,17 @@ class DatasetsLoader:
         planetoid_names = {"cora", "citeseer", "pubmed"}
         webkb_names = {"cornell", "texas", "wisconsin"}
         hetero_names = {"roman-empire", "amazon-ratings", "minesweeper", "tolokers", "questions"}
-
+        wikipedia_names = {"squirrel", "chameleon"}
         datasets = {}
-
         def process_single(name):
             name_lower = name.lower()
+
             if name_lower == "all":
                 datasets.update(self._load_planetoid("all"))
                 datasets.update(self._load_webkb("all"))
                 datasets.update(self._load_heterophilous("all"))
+                datasets.update(self._load_wikipedia_network("all"))
+                datasets.update(self._load_actor())
             elif name_lower == "planetoid":
                 datasets.update(self._load_planetoid("all"))
             elif name_lower == "webkb":
@@ -391,11 +490,14 @@ class DatasetsLoader:
                 datasets.update(self._load_webkb(name))
             elif name_lower in hetero_names:
                 datasets.update(self._load_heterophilous(name))
+            elif name_lower in wikipedia_names:
+                datasets.update(self._load_wikipedia_network(name))
+            elif name_lower == "actor":
+                datasets.update(self._load_actor())
             else:
                 raise ValueError(f"Dataset '{name}' not recognized. "
-                                 "Please use 'all', 'planetoid', 'webkb', 'heterophilous', "
+                                 "Please use 'all', 'planetoid', 'webkb', 'heterophilous', 'wikipedia', 'actor', "
                                  "or one of the available dataset names.")
-
         if isinstance(graph_name, list):
             for name in graph_name:
                 process_single(name)
@@ -403,18 +505,13 @@ class DatasetsLoader:
             process_single(graph_name)
         else:
             raise TypeError("The parameter 'graph_name' must be a string or a list of strings.")
-
         if self.normalize:
             for key, dataset in datasets.items():
                 dataset._data.x = self.normalize_features(dataset)
-
         if self.drop_small_classes:
             datasets = self.drop_irrelevant(datasets)
-
-        # If keeping only the main component is enabled, apply the method here.
         if self.keep_main_component_flag:
             datasets = self.keep_main_component(datasets)
-
         return datasets
 
 
@@ -855,43 +952,6 @@ class MissingMaskGenerator:
         :param exclude_inputs: for MNAR logistic; whether to exclude the logistic inputs from the masking. Default True.
         :return: A Boolean mask (n x d) (True = observed, False = missing)  or probability tensor if output_probs=True
         """
-        # mech = mechanism.lower()
-        # if mech == "mcar":
-        #     mask = self.generate_mcar(data, missing_rate)
-        # elif mech == "mar":
-        #     assert proportion_observed is not None, "For MAR, please specify 'proportion_observed'."
-        #     mask = self.generate_mar(data, missing_rate, proportion_observed)
-        # elif mech == "mnar":
-        #     assert option is not None, "For MNAR, please provide an 'option': 'quantile', 'logistic', or 'selfmasked'."
-        #     opt = option.lower()
-        #     if opt == "quantile":
-        #         assert q is not None, "For MNAR quantile, specify a quantile level 'q'."
-        #         assert p_params is not None, "For MNAR quantile, specify 'p_params' (fraction of variables to affect)."
-        #         cut = cut if cut is not None else 'both'
-        #         mask = self.generate_mnar_quantile(data, missing_rate, q, p_params, cut, mcar_extra)
-        #     elif opt == "logistic":
-        #         assert p_params is not None, "For MNAR logistic, specify 'p_params' (fraction of logistic inputs)."
-        #         exclude_inputs = exclude_inputs if exclude_inputs is not None else True
-        #         mask = self.generate_mnar_logistic(data, missing_rate, p_params, exclude_inputs)
-        #     elif opt == "selfmasked":
-        #         mask = self.generate_mnar_selfmasked(data, missing_rate)
-        #     else:
-        #         raise ValueError("Unknown MNAR option. Choose 'quantile', 'logistic', or 'selfmasked'.")
-        # else:
-        #     raise ValueError("Mechanism not recognized. Choose 'MCAR', 'MAR', or 'MNAR'.")
-        #
-        # # check proportion of missing values
-        # missing_prop = (mask == False).sum().item() / mask.numel()
-        # # raise warning if the actual missing proportion is different from the target
-        # if abs(missing_prop - missing_rate)/missing_rate > 0.1:
-        #     print(f"\033[91mWARNING:", end="")
-        #     # print all parameters that are not None to inform the user of the settings used
-        #     for name, value in locals().items():
-        #         if name in ["mechanism", "missing_rate", "proportion_observed", "option", "q", "p_params", "cut", "mcar_extra", "exclude_inputs"]:
-        #             if value is not None:
-        #                 print(f" {name}={value}", end="")
-        #     print(f"\n\tActual missing proportion ({missing_prop:.2f}) differs significantly from target ({missing_rate:.2f}).\033[0m")
-        # return mask
         mech = mechanism.lower()
         if mech == "mcar":
             result = self.generate_mcar(data, missing_rate)
@@ -2435,7 +2495,7 @@ class MultiW:
                  plot=False,
                  unique=None,
                  p_unif=True,
-                 normalize_F=False,
+                 normalize_F=True,
                  normalize_MF_MC=False,
                  use_geomloss=True,
                  CrossEtpy=False,
@@ -2643,7 +2703,7 @@ def griot(model=None,
           device=torch.device("cpu"),
           verbose=False,
           report_interval=1,
-          lossfn=MultiW(alpha=0.5, epsilon=0.1, p=2, p_unif=True, normalize_F=False, normalize_MF_MC=True),
+          lossfn=MultiW(alpha=0.5, epsilon=0.1, p=2, p_unif=True, normalize_F=True, normalize_MF_MC=False),
           F=None,
           C=None,
           train_vertex_index=None,
@@ -2845,8 +2905,8 @@ class GCN_IMPUTER(torch.nn.Module):
 
 def get_ot(C1, C2, F1, F2, p1=None, p2=None,
            p_unif=True,
-           normalize_F=False,
-           normalize_MF_MC=True,
+           normalize_F=True,
+           normalize_MF_MC=False,
            alpha=0.5,
            epsilon=0.1):
     C1 = C1.clone()
@@ -2988,8 +3048,8 @@ def impute_griot(data, mask, train_idx=None, val_idx=None, verbose=False, seed=0
                     p=2,
                     scaling=scaling,
                     p_unif=True,
-                    normalize_F=False,
-                    normalize_MF_MC=True,
+                    normalize_F=True,
+                    normalize_MF_MC=False,
                     use_geomloss=True)
 
     if verbose:
