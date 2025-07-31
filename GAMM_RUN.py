@@ -40,7 +40,7 @@ from sklearn.metrics import mean_squared_error, accuracy_score, f1_score, roc_au
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-path = "./a_new_taxonomy_for_attributed_graph_missingness_mechanisms"
+path = "./GAMM"
 
 # Ensure the results directory exists
 if not os.path.exists(path):
@@ -49,7 +49,7 @@ if not os.path.exists(path):
 run_tests = False
 
 # Import imputation methods, mask generators, aggregator functions, dataset loader and the new evaluation helpers.
-from a_new_taxonomy_for_attributed_graph_missingness_mechanisms_UTILS import (
+from GAMM_UTILS import (
     impute_random,
     impute_column_average,
     impute_mice,
@@ -74,7 +74,7 @@ from a_new_taxonomy_for_attributed_graph_missingness_mechanisms_UTILS import (
 
 # Import evaluation helpers
 from sklearn.model_selection import train_test_split  # (if needed elsewhere)
-from a_new_taxonomy_for_attributed_graph_missingness_mechanisms_UTILS import create_stratified_splits, compute_imputation_metrics, evaluate_classification
+from GAMM_UTILS import create_stratified_splits, compute_imputation_metrics, evaluate_classification
 
 def run_experiment(selected_datasets=("Cora", "Texas", "Tolokers"),
                    missing_rates=(0.2, 0.5, 0.8),
@@ -320,7 +320,7 @@ def parse_arguments():
     # Output path argument
     parser.add_argument(
         "-o", "--output-path", type=str,
-        default="./a_new_taxonomy_for_attributed_graph_missingness_mechanisms",
+        default="./GAMM",
         help="Path to save experiment results"
     )
 

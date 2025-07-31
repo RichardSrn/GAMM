@@ -7,9 +7,9 @@ A framework for generating missing data masks, evaluating, and comparing graph i
 This repository provides the official implementation of the GAMM framework. It introduces a comprehensive taxonomy for missingness mechanisms in attributed graphs and includes a robust experimental protocol for testing and comparing various imputation methods. The framework is designed for extensibility and reproducibility, supporting a wide range of popular graph datasets and state-of-the-art imputation algorithms.
 
 The core components of this repository are:
-- `a_new_taxonomy_for_attributed_graph_missingness_mechanisms_RUN.py`: The main command-line script for running experiments.
-- `a_new_taxonomy_for_attributed_graph_missingness_mechanisms_UTILS.py`: Contains utility functions, including dataset loaders, mask generators, and imputation method implementations.
-- `a_new_taxonomy_for_attributed_graph_missingness_mechanisms.ipynb`: A Jupyter Notebook for interactive exploration and running smaller-scale experiments.
+- `GAMM_RUN.py`: The main command-line script for running experiments.
+- `GAMM_UTILS.py`: Contains utility functions, including dataset loaders, mask generators, and imputation method implementations.
+- `GAMM.ipynb`: A Jupyter Notebook for interactive exploration and running smaller-scale experiments.
 
 ## Installation
 
@@ -30,14 +30,14 @@ You can run experiments using either the command-line script (recommended for la
 
 ### Command-Line Interface (CLI)
 
-The primary way to run experiments is through the `a_new_taxonomy_for_attributed_graph_missingness_mechanisms_RUN.py` script.
+The primary way to run experiments is through the `GAMM_RUN.py` script.
 
 #### Basic Example
 
 Here is an example of how to run an experiment on the `Cora` and `CiteSeer` datasets with the `FP` and `GRIOT` imputers, using missing rates of 20% and 50%, repeated over 5 runs:
 
 ```bash
-python3 a_new_taxonomy_for_attributed_graph_missingness_mechanisms_RUN.py \
+python3 GAMM_RUN.py \
     --datasets Cora,CiteSeer \
     --models FP,GRIOT \
     --missing-rates 0.2,0.5 \
@@ -49,7 +49,7 @@ python3 a_new_taxonomy_for_attributed_graph_missingness_mechanisms_RUN.py \
 For a complete list of all available command-line arguments, use the `--help` flag:
 
 ```bash
-python3 a_new_taxonomy_for_attributed_graph_missingness_mechanisms_RUN.py --help
+python3 GAMM_RUN.py --help
 ```
 
 | Argument | Shorthand | Description | Default |
@@ -88,7 +88,7 @@ python3 a_new_taxonomy_for_attributed_graph_missingness_mechanisms_RUN.py --help
 
 ### Jupyter Notebook
 
-For interactive use, you can run experiments directly within the `a_new_taxonomy_for_attributed_graph_missingness_mechanisms.ipynb` notebook. The setup is similar to the CLI, allowing you to configure and run experiments cell by cell. This is useful for debugging, visualization, and smaller test runs.
+For interactive use, you can run experiments directly within the `GAMM.ipynb` notebook. The setup is similar to the CLI, allowing you to configure and run experiments cell by cell. This is useful for debugging, visualization, and smaller test runs.
 
 ## Output Structure
 
