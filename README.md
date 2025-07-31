@@ -58,7 +58,7 @@ python3 GAMM_RUN.py --help
 | `--models` | `-m` | Comma-separated list of imputation models. If not set, all models are used. | `None` |
 | `--missing-rates` | `--mr` | Comma-separated list of missing rates (float values between 0 and 1). | `0.2,0.5,0.8` |
 | `--runs` | `-r` | Number of times to repeat the experiment for statistical significance. | `3` |
-| `--output-path` | `-o` | Path to save experiment results. | `./a_new_taxonomy...` |
+| `--output-path` | `-o` | Path to save experiment results. | `./GAMM` |
 | `--start` | `-s` | Starting index for the experiment run number (e.g., for resuming). | `0` |
 | `--save-output` | | If set, saves the imputed feature tensors and masks for each run. | `False` |
 | `--keep-main-component`| | If set, only keeps the main connected component of each graph. | `True` |
